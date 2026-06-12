@@ -4,29 +4,30 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Match Ticket Editor</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <style>
   :root{
-    --accent:#1F3F8F;       /* 포인트 컬러 (상단 바, 강조 텍스트) */
-    --ticket-bg:#FFFFFF;     /* 티켓 배경색 */
-    --page-bg:#0B3D2E;       /* 페이지(배경) 색 */
+    --accent:#1F3F8F;
+    --ticket-bg:#FFFFFF;
+    --page-bg:#0B3D2E;
     --text-main:#000000;
     --text-sub:#000000;
     --text-accent:#FFFFFF;
     --side-img-opacity: 0.35;
+    --font-main: 'Courier New', monospace; /* 컨셉1 고딕체 */
   }
   *{box-sizing:border-box;}
   html,body{margin:0;}
   body{
     min-height:100vh;
     background:var(--page-bg);
-    font-family: 'Courier New', monospace;
+    font-family: var(--font-main);
     display:flex;
     flex-direction:column;
     align-items:center;
     padding:40px 16px;
     color:#fff;
   }
-  /* 축구 필드 배경 옵션 */
   body.pitch-bg{
     background:
       repeating-linear-gradient(180deg, rgba(255,255,255,0.05) 0 60px, rgba(255,255,255,0) 60px 120px),
@@ -65,18 +66,33 @@
     flex-direction:column;
     box-shadow:0 10px 28px rgba(0,0,0,0.35);
     color:var(--text-main);
+    font-family:var(--font-main);
   }
 
-  /* 우측 삽입 이미지 */
-  .side-image{
+  /* 우측 삽입 이미지 (드래그 가능) */
+  .side-image-wrap{
     position:absolute;
-    top:0; right:0;
-    width:38%;
+    z-index:0;
+    cursor:move;
+    user-select:none;
+  }
+  .side-image-wrap img{
+    width:100%;
     height:100%;
     object-fit:cover;
     opacity:var(--side-img-opacity);
+    display:block;
     pointer-events:none;
-    z-index:0;
+  }
+  .resize-handle{
+    position:absolute;
+    right:-6px; bottom:-6px;
+    width:14px; height:14px;
+    background:var(--accent);
+    border:2px solid #fff;
+    border-radius:50%;
+    cursor:nwse-resize;
+    z-index:2;
   }
 
   /* 상단 컬러 바 */
@@ -99,28 +115,21 @@
     letter-spacing:2px;
     text-transform:uppercase;
   }
-  .crest{
-    width:40px;height:40px;
-    border-radius:50%;
-    border:2px solid var(--text-accent);
-    display:flex;align-items:center;justify-content:center;
-    font-family:Georgia,serif;
-    font-weight:bold;
-    font-size:10px;
-    text-align:center;
-    line-height:1.1;
-    flex-shrink:0;
-    background:rgba(255,255,255,0.08);
+  .crest-area{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:2px;
   }
-  .season{
+  .crest-label{
     font-size:16px;
     font-weight:bold;
+    letter-spacing:1px;
+  }
+  .season{
+    font-size:10px;
     letter-spacing:2px;
-    writing-mode:vertical-rl;
-    position:absolute;
-    right:14px;
-    top:50px;
-    z-index:1;
+    font-weight:bold;
   }
 
   /* 본문 */
@@ -144,8 +153,9 @@
     letter-spacing:1px;
     text-transform:uppercase;
     color:var(--text-main);
+    white-space:nowrap;
+    overflow:hidden;
   }
-  .vs{ color:var(--accent); margin:0 6px; font-style:italic; }
 
   .info-row{
     display:flex;
@@ -176,7 +186,7 @@
     font-weight:bold;
     color:var(--text-main);
   }
-  .seat-row .lbl{ color:var(--accent); }
+  .seat-row .editable{ min-width:50px; display:inline-block; }
 
   /* 하단 바코드 영역 */
   .bottom-row{
@@ -187,19 +197,22 @@
   }
   .barcode-wrap{
     display:flex;
-    align-items:center;
-    gap:10px;
+    flex-direction:column;
+    align-items:flex-start;
+    gap:4px;
   }
   .barcode{
-    width:130px;
+    width:150px;
     height:36px;
     background:repeating-linear-gradient(90deg, var(--text-main) 0 2px, transparent 2px 5px);
   }
   .barcode-num{
     font-size:13px;
     font-weight:bold;
-    letter-spacing:2px;
+    letter-spacing:3px;
     color:var(--text-main);
+    width:150px;
+    text-align:center;
   }
   .notice{
     font-size:9px;
@@ -227,7 +240,11 @@
   }
   .editable:hover{ background:rgba(0,0,0,0.06); }
   .editable:focus{ outline:1px dashed currentColor; background:rgba(255,255,255,0.5); }
-  input.editable{ width:auto; }
+
+  /* 폰트 컨셉 */
+  .font-gothic{ font-family:'Courier New', monospace; }
+  .font-gulim{ font-family:'Malgun Gothic','Gulim','Apple SD Gothic Neo',sans-serif; }
+  .font-gothic-bold{ font-family:'Arial Black','Courier New',sans-serif; font-weight:900; }
 
   /* ============ PANEL ============ */
   .panel{
@@ -239,6 +256,7 @@
     border-radius:4px;
     padding:16px 20px;
     color:#222;
+    font-family:'Courier New',monospace;
   }
   .panel h2{
     margin:0 0 10px;
@@ -297,12 +315,26 @@
     color:#fff;
     border-color:var(--accent);
   }
+  .panel button.preset-empty{
+    min-width:90px;
+    color:#bbb;
+    border-style:dashed;
+  }
   .panel-note{
     font-size:11px;
     color:#666;
     line-height:1.6;
   }
   input[type="file"]{ display:none; }
+  select{
+    font-family:'Courier New',monospace;
+    font-weight:bold;
+    font-size:11px;
+    letter-spacing:1px;
+    padding:6px 8px;
+    border:2px solid #111;
+    background:#fff;
+  }
 
   @media (max-width:600px){
     .top-bar{ flex-wrap:wrap; }
@@ -310,7 +342,6 @@
     .ticket{ aspect-ratio: 4/3; }
     .fixture{ font-size:16px; }
     .mid-row, .seat-row{ font-size:12px; }
-    .season{ font-size:11px; }
   }
 </style>
 </head>
@@ -320,21 +351,24 @@
 
 <div class="ticket-wrap">
   <div class="ticket" id="ticket">
-    <img class="side-image" id="sideImage" src="" alt="" style="display:none;">
+
+    <!-- 드래그/리사이즈 가능한 우측 이미지 -->
+    <div class="side-image-wrap" id="sideImageWrap" style="display:none; right:0; top:0; width:280px; height:100%;">
+      <img id="sideImage" src="" alt="">
+      <div class="resize-handle" id="resizeHandle"></div>
+    </div>
 
     <div class="top-bar">
       <div class="club-name editable" contenteditable="true" data-placeholder="-----------------------">-----------------------</div>
-      <div class="crest editable" contenteditable="true" data-placeholder="CREST">CREST</div>
+      <div class="crest-area">
+        <div class="crest-label editable" contenteditable="true" data-placeholder="CREST">CREST</div>
+        <div class="season editable" contenteditable="true" data-placeholder="----.--">----.--</div>
+      </div>
     </div>
-    <div class="season editable" contenteditable="true" data-placeholder="----/--">----/--</div>
 
     <div class="body-area">
       <div class="fixture-row">
-        <div class="fixture">
-          <span class="editable" contenteditable="true" data-placeholder="-----------">-----------</span>
-          <span class="vs">v</span>
-          <span class="editable" contenteditable="true" data-placeholder="-----------">-----------</span>
-        </div>
+        <div class="fixture editable" contenteditable="true" data-placeholder="--------------------------------------">--------------------------------------</div>
         <div class="info-row">
           <span><span class="lbl">COMP </span><span class="editable" contenteditable="true" data-placeholder="--------------">--------------</span></span>
           <span><span class="editable" contenteditable="true" data-placeholder="--------, -- ------ ----">--------, -- ------ ----</span></span>
@@ -347,9 +381,9 @@
           <span class="editable" contenteditable="true" data-placeholder="-----------------------">-----------------------</span>
         </div>
         <div class="seat-row">
-          <span><span class="lbl">BLOCK </span><span class="editable" contenteditable="true" data-placeholder="--">--</span></span>
-          <span><span class="lbl">ROW </span><span class="editable" contenteditable="true" data-placeholder="--">--</span></span>
-          <span><span class="lbl">SEAT </span><span class="editable" contenteditable="true" data-placeholder="----">----</span></span>
+          <span class="editable" contenteditable="true" data-placeholder="--">--</span>
+          <span class="editable" contenteditable="true" data-placeholder="--">--</span>
+          <span class="editable" contenteditable="true" data-placeholder="----">----</span>
         </div>
       </div>
 
@@ -397,10 +431,22 @@
       </div>
       <button onclick="removeSideImage()">이미지 제거</button>
     </div>
+    <p class="panel-note">이미지를 삽입한 뒤 티켓 위에서 드래그하면 위치 이동, 우측 하단 동그란 핸들을 드래그하면 크기 조절이 됩니다.</p>
   </div>
 
   <div class="panel-section">
-    <h3>3. 포인트 컬러 (상단 바 · 강조 텍스트 · 라벨)</h3>
+    <h3>3. 폰트 선택</h3>
+    <div class="panel-row">
+      <select onchange="setFont(this.value)">
+        <option value="font-gothic">컨셉 1 : 고딕체</option>
+        <option value="font-gulim">컨셉 2 : 굴림체</option>
+        <option value="font-gothic-bold">컨셉 3 : 고딕체 볼드</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="panel-section">
+    <h3>4. 포인트 컬러 (상단 바 · 강조 텍스트 · 라벨)</h3>
     <div class="panel-row">
       <div class="ctrl-group">
         포인트 컬러
@@ -414,7 +460,7 @@
   </div>
 
   <div class="panel-section">
-    <h3>4. 본문 글씨 색상</h3>
+    <h3>5. 본문 글씨 색상</h3>
     <div class="panel-row">
       <div class="ctrl-group">
         주요 텍스트 (대결/좌석)
@@ -428,14 +474,27 @@
   </div>
 
   <div class="panel-section">
-    <h3>EPL 클럽 프리셋</h3>
+    <h3>EPL 클럽 프리셋 (직접 채워서 사용)</h3>
     <div class="panel-row">
-      <button onclick="setVar('--accent','#034694')">CHELSEA</button>
-      <button onclick="setVar('--accent','#C8102E')">ARSENAL</button>
-      <button onclick="setVar('--accent','#6CABDD')">MAN CITY</button>
-      <button onclick="setVar('--accent','#D71920')">LIVERPOOL</button>
-      <button onclick="setVar('--accent','#132257')">TOTTENHAM</button>
-      <button onclick="setVar('--accent','#FDB913')">WOLVES</button>
+      <button class="preset-empty" onclick="">프리셋 1</button>
+      <button class="preset-empty" onclick="">프리셋 2</button>
+      <button class="preset-empty" onclick="">프리셋 3</button>
+      <button class="preset-empty" onclick="">프리셋 4</button>
+      <button class="preset-empty" onclick="">프리셋 5</button>
+      <button class="preset-empty" onclick="">프리셋 6</button>
+      <button class="preset-empty" onclick="">프리셋 7</button>
+      <button class="preset-empty" onclick="">프리셋 8</button>
+    </div>
+    <p class="panel-note">각 버튼의 onclick="" 안에 <code>setVar('--accent','#XXXXXX')</code> 형태로 원하는 클럽 컬러 코드를 채워 넣어 사용하세요.</p>
+  </div>
+
+  <div class="panel-section">
+    <h3>6. 저장하기</h3>
+    <div class="panel-row">
+      <button onclick="downloadTicket(true)">티켓 + 배경 PNG 저장</button>
+      <button onclick="downloadTicket(false)">티켓만 PNG 저장</button>
+      <button onclick="downloadTicket(true,'jpg')">티켓 + 배경 JPG 저장</button>
+      <button onclick="downloadTicket(false,'jpg')">티켓만 JPG 저장</button>
     </div>
   </div>
 
@@ -444,8 +503,7 @@
   </div>
 
   <p class="panel-note">
-    "-" 로 표시된 모든 영역을 클릭하면 직접 텍스트를 입력할 수 있습니다 (바코드 숫자는 8자리 권장).<br>
-    우측 삽입 이미지는 티켓 우측에 배치되며 불투명도를 조절해 배경처럼 사용할 수 있습니다.
+    "-" 로 표시된 모든 영역을 클릭하면 직접 텍스트를 입력할 수 있습니다 (바코드 숫자는 8자리 권장).
   </p>
 </div>
 
@@ -455,6 +513,7 @@
   }
   function setPageBg(type){
     document.body.classList.remove('transparent-bg','white-bg','pitch-bg');
+    document.body.style.background = '';
     if(type==='transparent') document.body.classList.add('transparent-bg');
     if(type==='white') document.body.classList.add('white-bg');
     if(type==='pitch') document.body.classList.add('pitch-bg');
@@ -466,6 +525,13 @@
   function setTicketBg(val){
     setVar('--ticket-bg', val);
   }
+  function setFont(cls){
+    const ticket = document.getElementById('ticket');
+    ticket.classList.remove('font-gothic','font-gulim','font-gothic-bold');
+    ticket.classList.add(cls);
+  }
+
+  /* ---- 이미지 삽입 / 드래그 / 리사이즈 ---- */
   function setSideImage(e){
     const file = e.target.files[0];
     if(!file) return;
@@ -473,7 +539,7 @@
     reader.onload = function(ev){
       const img = document.getElementById('sideImage');
       img.src = ev.target.result;
-      img.style.display = 'block';
+      document.getElementById('sideImageWrap').style.display = 'block';
     };
     reader.readAsDataURL(file);
   }
@@ -483,23 +549,63 @@
   function removeSideImage(){
     const img = document.getElementById('sideImage');
     img.src = '';
-    img.style.display = 'none';
+    document.getElementById('sideImageWrap').style.display = 'none';
   }
-  function resetTicket(){
-    document.querySelectorAll('.editable').forEach(el=>{
-      if(el.tagName==='INPUT'){
-        el.value = el.placeholder;
-      } else {
-        el.textContent = el.dataset.placeholder;
+
+  (function(){
+    const wrap = document.getElementById('sideImageWrap');
+    const handle = document.getElementById('resizeHandle');
+    const ticket = document.getElementById('ticket');
+    let dragging=false, resizing=false, startX, startY, startLeft, startTop, startW, startH;
+
+    wrap.addEventListener('mousedown', function(e){
+      if(e.target === handle) return;
+      dragging = true;
+      const rect = wrap.getBoundingClientRect();
+      startX = e.clientX; startY = e.clientY;
+      startLeft = rect.left; startTop = rect.top;
+      e.preventDefault();
+    });
+    handle.addEventListener('mousedown', function(e){
+      resizing = true;
+      const rect = wrap.getBoundingClientRect();
+      startX = e.clientX; startY = e.clientY;
+      startW = rect.width; startH = rect.height;
+      e.preventDefault();
+      e.stopPropagation();
+    });
+    document.addEventListener('mousemove', function(e){
+      const tRect = ticket.getBoundingClientRect();
+      if(dragging){
+        let newLeft = startLeft + (e.clientX - startX) - tRect.left;
+        let newTop = startTop + (e.clientY - startY) - tRect.top;
+        wrap.style.left = newLeft + 'px';
+        wrap.style.top = newTop + 'px';
+        wrap.style.right = 'auto';
+      }
+      if(resizing){
+        let newW = Math.max(40, startW + (e.clientX - startX));
+        let newH = Math.max(40, startH + (e.clientY - startY));
+        wrap.style.width = newW + 'px';
+        wrap.style.height = newH + 'px';
       }
     });
+    document.addEventListener('mouseup', function(){
+      dragging = false; resizing = false;
+    });
+  })();
+
+  function resetTicket(){
+    document.querySelectorAll('.editable').forEach(el=>{
+      el.textContent = el.dataset.placeholder;
+    });
   }
-  // 바코드 숫자 8자리 제한
-  document.querySelector('.barcode-num').addEventListener('input', function(e){
+
+  /* 바코드 숫자 8자리 제한 */
+  document.querySelector('.barcode-num').addEventListener('input', function(){
     const txt = this.textContent.replace(/[^0-9]/g,'').slice(0,8);
     if(this.textContent !== txt){
       this.textContent = txt;
-      // 커서 끝으로 이동
       const range = document.createRange();
       range.selectNodeContents(this);
       range.collapse(false);
@@ -508,6 +614,29 @@
       sel.addRange(range);
     }
   });
+
+  /* ---- 이미지로 저장 ---- */
+  function downloadTicket(withBg, format){
+    format = format || 'png';
+    const target = withBg ? document.querySelector('.ticket-wrap').parentElement : document.getElementById('ticket');
+    const handle = document.getElementById('resizeHandle');
+    handle.style.visibility = 'hidden';
+
+    const options = {
+      backgroundColor: withBg ? null : getComputedStyle(document.getElementById('ticket')).backgroundColor,
+      useCORS: true,
+      scale: 2
+    };
+
+    html2canvas(target, options).then(function(canvas){
+      handle.style.visibility = 'visible';
+      const mime = format === 'jpg' ? 'image/jpeg' : 'image/png';
+      const link = document.createElement('a');
+      link.download = (withBg ? 'ticket_with_bg.' : 'ticket_only.') + (format === 'jpg' ? 'jpg' : 'png');
+      link.href = canvas.toDataURL(mime, 0.95);
+      link.click();
+    });
+  }
 </script>
 
 </body>
