@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Match Ticket Editor</title>
+<style>
+  :root{
+    --accent:#1F3F8F;       /* 포인트 컬러 (상단 바, 강조 텍스트) */
+    --ticket-bg:#FFFFFF;     /* 티켓 배경색 */
+    --page-bg:#0B3D2E;       /* 페이지(배경) 색 */
+    --text-main:#000000;
+    --text-sub:#000000;
+    --text-accent:#FFFFFF;
+    --side-img-opacity: 0.35;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;}
+  body{
+    min-height:100vh;
+    background:var(--page-bg);
+    font-family: 'Courier New', monospace;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    padding:40px 16px;
+    color:#fff;
+  }
+  /* 축구 필드 배경 옵션 */
+  body.pitch-bg{
+    background:
+      repeating-linear-gradient(180deg, rgba(255,255,255,0.05) 0 60px, rgba(255,255,255,0) 60px 120px),
+      #2e7d32;
+  }
+  body.transparent-bg{
+    background:
+      repeating-conic-gradient(#e9e9e9 0% 25%, #ffffff 0% 50%) 0 0 / 24px 24px;
+  }
+  body.white-bg{ background:#ffffff; color:#222; }
+
+  h1{
+    font-family: Georgia, 'Times New Roman', serif;
+    letter-spacing:4px;
+    text-transform:uppercase;
+    font-size:18px;
+    margin-bottom:24px;
+    text-align:center;
+  }
+  body.white-bg h1, body.transparent-bg h1{ color:#222; }
+
+  /* ============ TICKET ============ */
+  .ticket-wrap{
+    width:760px;
+    max-width:100%;
+  }
+  .ticket{
+    width:100%;
+    aspect-ratio: 760 / 320;
+    background:var(--ticket-bg);
+    border:2px solid #111;
+    border-radius:4px;
+    overflow:hidden;
+    position:relative;
+    display:flex;
+    flex-direction:column;
+    box-shadow:0 10px 28px rgba(0,0,0,0.35);
+    color:var(--text-main);
+  }
+
+  /* 우측 삽입 이미지 */
+  .side-image{
+    position:absolute;
+    top:0; right:0;
+    width:38%;
+    height:100%;
+    object-fit:cover;
+    opacity:var(--side-img-opacity);
+    pointer-events:none;
+    z-index:0;
+  }
+
+  /* 상단 컬러 바 */
+  .top-bar{
+    background:var(--accent);
+    color:var(--text-accent);
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:8px 16px;
+    position:relative;
+    z-index:1;
+    flex:0 0 auto;
+  }
+  .club-name{
+    font-family:Georgia,'Times New Roman',serif;
+    font-style:italic;
+    font-weight:bold;
+    font-size:20px;
+    letter-spacing:2px;
+    text-transform:uppercase;
+  }
+  .crest{
+    width:40px;height:40px;
+    border-radius:50%;
+    border:2px solid var(--text-accent);
+    display:flex;align-items:center;justify-content:center;
+    font-family:Georgia,serif;
+    font-weight:bold;
+    font-size:10px;
+    text-align:center;
+    line-height:1.1;
+    flex-shrink:0;
+    background:rgba(255,255,255,0.08);
+  }
+  .season{
+    font-size:16px;
+    font-weight:bold;
+    letter-spacing:2px;
+    writing-mode:vertical-rl;
+    position:absolute;
+    right:14px;
+    top:50px;
+    z-index:1;
+  }
+
+  /* 본문 */
+  .body-area{
+    flex:1;
+    display:flex;
+    flex-direction:column;
+    justify-content:space-between;
+    padding:12px 16px 8px;
+    position:relative;
+    z-index:1;
+  }
+
+  .fixture-row{
+    border-left:4px solid var(--accent);
+    padding-left:10px;
+  }
+  .fixture{
+    font-size:24px;
+    font-weight:bold;
+    letter-spacing:1px;
+    text-transform:uppercase;
+    color:var(--text-main);
+  }
+  .vs{ color:var(--accent); margin:0 6px; font-style:italic; }
+
+  .info-row{
+    display:flex;
+    gap:24px;
+    font-size:12px;
+    margin-top:6px;
+    color:var(--text-sub);
+  }
+  .info-row .lbl{
+    color:var(--accent);
+    font-weight:bold;
+  }
+
+  .mid-row{
+    display:flex;
+    justify-content:space-between;
+    align-items:baseline;
+    margin-top:10px;
+    font-size:16px;
+    font-weight:bold;
+    letter-spacing:1px;
+    color:var(--text-main);
+  }
+  .seat-row{
+    display:flex;
+    gap:18px;
+    font-size:16px;
+    font-weight:bold;
+    color:var(--text-main);
+  }
+  .seat-row .lbl{ color:var(--accent); }
+
+  /* 하단 바코드 영역 */
+  .bottom-row{
+    display:flex;
+    align-items:flex-end;
+    justify-content:space-between;
+    margin-top:8px;
+  }
+  .barcode-wrap{
+    display:flex;
+    align-items:center;
+    gap:10px;
+  }
+  .barcode{
+    width:130px;
+    height:36px;
+    background:repeating-linear-gradient(90deg, var(--text-main) 0 2px, transparent 2px 5px);
+  }
+  .barcode-num{
+    font-size:13px;
+    font-weight:bold;
+    letter-spacing:2px;
+    color:var(--text-main);
+  }
+  .notice{
+    font-size:9px;
+    letter-spacing:1px;
+    color:var(--text-sub);
+    text-align:right;
+    max-width:280px;
+  }
+
+  /* Editable */
+  .editable{
+    border:none;
+    background:transparent;
+    font-family:inherit;
+    color:inherit;
+    font-weight:inherit;
+    font-style:inherit;
+    font-size:inherit;
+    letter-spacing:inherit;
+    text-transform:inherit;
+    text-align:inherit;
+    padding:1px 3px;
+    border-radius:2px;
+    transition:background .15s, outline .15s;
+  }
+  .editable:hover{ background:rgba(0,0,0,0.06); }
+  .editable:focus{ outline:1px dashed currentColor; background:rgba(255,255,255,0.5); }
+  input.editable{ width:auto; }
+
+  /* ============ PANEL ============ */
+  .panel{
+    width:760px;
+    max-width:100%;
+    margin-top:24px;
+    background:#fff;
+    border:2px solid #111;
+    border-radius:4px;
+    padding:16px 20px;
+    color:#222;
+  }
+  .panel h2{
+    margin:0 0 10px;
+    font-family:Georgia,serif;
+    font-size:14px;
+    letter-spacing:2px;
+    text-transform:uppercase;
+    border-bottom:2px solid #111;
+    padding-bottom:6px;
+  }
+  .panel-section{ margin-bottom:14px; }
+  .panel-section:last-child{ margin-bottom:0; }
+  .panel-section h3{
+    font-size:11px;
+    letter-spacing:2px;
+    text-transform:uppercase;
+    color:#666;
+    margin:0 0 8px;
+  }
+  .panel-row{
+    display:flex;
+    gap:14px;
+    flex-wrap:wrap;
+    align-items:center;
+  }
+  .ctrl-group{
+    display:flex;
+    flex-direction:column;
+    gap:4px;
+    font-size:11px;
+    font-weight:bold;
+    letter-spacing:1px;
+  }
+  .ctrl-group input[type="color"]{
+    width:40px;height:28px;
+    border:2px solid #111;
+    padding:0;
+    cursor:pointer;
+  }
+  .ctrl-group input[type="range"]{ width:140px; }
+  .panel button, .panel label.btn{
+    font-family:'Courier New',monospace;
+    font-weight:bold;
+    letter-spacing:1px;
+    text-transform:uppercase;
+    font-size:11px;
+    padding:8px 14px;
+    border:2px solid #111;
+    background:#fff;
+    cursor:pointer;
+    transition:.15s;
+    display:inline-block;
+  }
+  .panel button:hover, .panel label.btn:hover{
+    background:var(--accent);
+    color:#fff;
+    border-color:var(--accent);
+  }
+  .panel-note{
+    font-size:11px;
+    color:#666;
+    line-height:1.6;
+  }
+  input[type="file"]{ display:none; }
+
+  @media (max-width:600px){
+    .top-bar{ flex-wrap:wrap; }
+    .info-row{ flex-direction:column; gap:2px; }
+    .ticket{ aspect-ratio: 4/3; }
+    .fixture{ font-size:16px; }
+    .mid-row, .seat-row{ font-size:12px; }
+    .season{ font-size:11px; }
+  }
+</style>
+</head>
+<body>
+
+<h1>★ Match Day Ticket Generator ★</h1>
+
+<div class="ticket-wrap">
+  <div class="ticket" id="ticket">
+    <img class="side-image" id="sideImage" src="" alt="" style="display:none;">
+
+    <div class="top-bar">
+      <div class="club-name editable" contenteditable="true" data-placeholder="-----------------------">-----------------------</div>
+      <div class="crest editable" contenteditable="true" data-placeholder="CREST">CREST</div>
+    </div>
+    <div class="season editable" contenteditable="true" data-placeholder="----/--">----/--</div>
+
+    <div class="body-area">
+      <div class="fixture-row">
+        <div class="fixture">
+          <span class="editable" contenteditable="true" data-placeholder="-----------">-----------</span>
+          <span class="vs">v</span>
+          <span class="editable" contenteditable="true" data-placeholder="-----------">-----------</span>
+        </div>
+        <div class="info-row">
+          <span><span class="lbl">COMP </span><span class="editable" contenteditable="true" data-placeholder="--------------">--------------</span></span>
+          <span><span class="editable" contenteditable="true" data-placeholder="--------, -- ------ ----">--------, -- ------ ----</span></span>
+          <span><span class="lbl">KICK OFF </span><span class="editable" contenteditable="true" data-placeholder="--:--">--:--</span></span>
+        </div>
+      </div>
+
+      <div>
+        <div class="mid-row">
+          <span class="editable" contenteditable="true" data-placeholder="-----------------------">-----------------------</span>
+        </div>
+        <div class="seat-row">
+          <span><span class="lbl">BLOCK </span><span class="editable" contenteditable="true" data-placeholder="--">--</span></span>
+          <span><span class="lbl">ROW </span><span class="editable" contenteditable="true" data-placeholder="--">--</span></span>
+          <span><span class="lbl">SEAT </span><span class="editable" contenteditable="true" data-placeholder="----">----</span></span>
+        </div>
+      </div>
+
+      <div class="bottom-row">
+        <div class="barcode-wrap">
+          <div class="barcode"></div>
+          <div class="barcode-num editable" contenteditable="true" data-placeholder="--------" maxlength="8">--------</div>
+        </div>
+        <div class="notice editable" contenteditable="true" data-placeholder="PERSISTENT STANDING IS NOT ALLOWED">PERSISTENT STANDING IS NOT ALLOWED</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="panel">
+  <h2>Editor Controls</h2>
+
+  <div class="panel-section">
+    <h3>1. 페이지 배경</h3>
+    <div class="panel-row">
+      <button onclick="setPageBg('transparent')">투명(체크무늬)</button>
+      <button onclick="setPageBg('white')">흰색</button>
+      <button onclick="setPageBg('pitch')">축구 필드</button>
+      <div class="ctrl-group">
+        사용자 지정
+        <input type="color" value="#0B3D2E" oninput="setPageBgColor(this.value)">
+      </div>
+    </div>
+  </div>
+
+  <div class="panel-section">
+    <h3>2. 티켓 배경</h3>
+    <div class="panel-row">
+      <button onclick="setTicketBg('#FFFFFF')">흰색</button>
+      <div class="ctrl-group">
+        사용자 지정 색
+        <input type="color" value="#FFFFFF" oninput="setTicketBg(this.value)">
+      </div>
+      <label class="btn">이미지 삽입(우측)
+        <input type="file" accept="image/*" onchange="setSideImage(event)">
+      </label>
+      <div class="ctrl-group">
+        이미지 불투명도
+        <input type="range" min="0" max="1" step="0.05" value="0.35" oninput="setSideOpacity(this.value)">
+      </div>
+      <button onclick="removeSideImage()">이미지 제거</button>
+    </div>
+  </div>
+
+  <div class="panel-section">
+    <h3>3. 포인트 컬러 (상단 바 · 강조 텍스트 · 라벨)</h3>
+    <div class="panel-row">
+      <div class="ctrl-group">
+        포인트 컬러
+        <input type="color" value="#1F3F8F" oninput="setVar('--accent', this.value)">
+      </div>
+      <div class="ctrl-group">
+        상단 바 텍스트색
+        <input type="color" value="#FFFFFF" oninput="setVar('--text-accent', this.value)">
+      </div>
+    </div>
+  </div>
+
+  <div class="panel-section">
+    <h3>4. 본문 글씨 색상</h3>
+    <div class="panel-row">
+      <div class="ctrl-group">
+        주요 텍스트 (대결/좌석)
+        <input type="color" value="#000000" oninput="setVar('--text-main', this.value)">
+      </div>
+      <div class="ctrl-group">
+        보조 텍스트 (안내/정보)
+        <input type="color" value="#000000" oninput="setVar('--text-sub', this.value)">
+      </div>
+    </div>
+  </div>
+
+  <div class="panel-section">
+    <h3>EPL 클럽 프리셋</h3>
+    <div class="panel-row">
+      <button onclick="setVar('--accent','#034694')">CHELSEA</button>
+      <button onclick="setVar('--accent','#C8102E')">ARSENAL</button>
+      <button onclick="setVar('--accent','#6CABDD')">MAN CITY</button>
+      <button onclick="setVar('--accent','#D71920')">LIVERPOOL</button>
+      <button onclick="setVar('--accent','#132257')">TOTTENHAM</button>
+      <button onclick="setVar('--accent','#FDB913')">WOLVES</button>
+    </div>
+  </div>
+
+  <div class="panel-section">
+    <button onclick="resetTicket()">텍스트 초기화</button>
+  </div>
+
+  <p class="panel-note">
+    "-" 로 표시된 모든 영역을 클릭하면 직접 텍스트를 입력할 수 있습니다 (바코드 숫자는 8자리 권장).<br>
+    우측 삽입 이미지는 티켓 우측에 배치되며 불투명도를 조절해 배경처럼 사용할 수 있습니다.
+  </p>
+</div>
+
+<script>
+  function setVar(name, val){
+    document.documentElement.style.setProperty(name, val);
+  }
+  function setPageBg(type){
+    document.body.classList.remove('transparent-bg','white-bg','pitch-bg');
+    if(type==='transparent') document.body.classList.add('transparent-bg');
+    if(type==='white') document.body.classList.add('white-bg');
+    if(type==='pitch') document.body.classList.add('pitch-bg');
+  }
+  function setPageBgColor(val){
+    document.body.classList.remove('transparent-bg','white-bg','pitch-bg');
+    document.body.style.background = val;
+  }
+  function setTicketBg(val){
+    setVar('--ticket-bg', val);
+  }
+  function setSideImage(e){
+    const file = e.target.files[0];
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = function(ev){
+      const img = document.getElementById('sideImage');
+      img.src = ev.target.result;
+      img.style.display = 'block';
+    };
+    reader.readAsDataURL(file);
+  }
+  function setSideOpacity(val){
+    setVar('--side-img-opacity', val);
+  }
+  function removeSideImage(){
+    const img = document.getElementById('sideImage');
+    img.src = '';
+    img.style.display = 'none';
+  }
+  function resetTicket(){
+    document.querySelectorAll('.editable').forEach(el=>{
+      if(el.tagName==='INPUT'){
+        el.value = el.placeholder;
+      } else {
+        el.textContent = el.dataset.placeholder;
+      }
+    });
+  }
+  // 바코드 숫자 8자리 제한
+  document.querySelector('.barcode-num').addEventListener('input', function(e){
+    const txt = this.textContent.replace(/[^0-9]/g,'').slice(0,8);
+    if(this.textContent !== txt){
+      this.textContent = txt;
+      // 커서 끝으로 이동
+      const range = document.createRange();
+      range.selectNodeContents(this);
+      range.collapse(false);
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+    }
+  });
+</script>
+
+</body>
+</html>
