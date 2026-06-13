@@ -67,6 +67,11 @@
     filter: blur(var(--stage-blur, 0px));
     z-index:0;
   }
+  .stage.stage-pitch{
+    background:
+      repeating-linear-gradient(180deg, rgba(255,255,255,0.08) 0 60px, rgba(255,255,255,0) 60px 120px),
+      #2e7d32 !important;
+  }
   .ticket-wrap{
     width:760px;
     max-width:100%;
@@ -459,9 +464,9 @@
     <h3>3. 폰트 선택</h3>
     <div class="panel-row">
       <select onchange="setFont(this.value)">
-        <option value="font-gothic"> 1. 진짜 티켓 같아요 </option>
-        <option value="font-gulim"> 2. 깔끔</option>
-        <option value="font-gothic-bold"> 3. 볼드</option>
+        <option value="font-gothic">컨셉 1 : 고딕체</option>
+        <option value="font-gulim">컨셉 2 : 굴림체</option>
+        <option value="font-gothic-bold">컨셉 3 : 고딕체 볼드</option>
       </select>
     </div>
   </div>
@@ -497,6 +502,7 @@
   <div class="panel-section">
     <h3>6. 티켓 아래 배경 (스테이지)</h3>
     <div class="panel-row">
+      <button onclick="setStagePitch()">축구 필드</button>
       <div class="ctrl-group">
         배경 색 1
         <input type="color" value="#ffffff" oninput="setStageColor(this.value)" id="stageColor1">
@@ -656,8 +662,14 @@
   /* ---- 스테이지(티켓 아래) 배경 ---- */
   let stageColor1 = '#ffffff', stageColor2 = '#ffffff', stageAngle = 135;
   function updateStageGradient(){
+    document.getElementById('stage').classList.remove('stage-pitch');
     document.getElementById('stage').style.setProperty('--stage-bg',
       `linear-gradient(${stageAngle}deg, ${stageColor1}, ${stageColor2})`);
+  }
+  function setStagePitch(){
+    const stage = document.getElementById('stage');
+    removeStageImage();
+    stage.classList.add('stage-pitch');
   }
   function setStageColor(val){ stageColor1 = val; updateStageGradient(); }
   function setStageColor2(val){ stageColor2 = val; updateStageGradient(); }
@@ -667,6 +679,7 @@
     if(!file) return;
     const reader = new FileReader();
     reader.onload = function(ev){
+      document.getElementById('stage').classList.remove('stage-pitch');
       const img = document.getElementById('stageImage');
       img.src = ev.target.result;
       img.style.display = 'block';
